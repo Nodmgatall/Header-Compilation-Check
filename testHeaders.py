@@ -35,6 +35,9 @@ parser.add_option(      "--CXX"             ,dest="CXX"             ,action="sto
 parser.add_option(      "--CFLAGS"          ,dest="CFLAGS"          ,action="store"     ,type='string'
                                             ,help="")
 
+parser.add_option(      "--clean"          ,dest="clean"           ,action="store_true"
+                                            ,help="")
+
 
 options,args =  parser.parse_args()
 #=====================================================================================================================
@@ -185,7 +188,12 @@ def run():
 
 
 def main():
-    return run()
+    if options.clean:
+        removeCommand = "rm " + "*.gch *.log"
+        subprocess.Popen(removeCommand, shell=True, cwd=(os.getcwd()+"/"))
+        return 0
+    else:
+        return run()
 
 if __name__ == "__main__":
     instanceID = main()
