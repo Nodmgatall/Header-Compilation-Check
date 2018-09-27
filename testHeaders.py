@@ -1,110 +1,192 @@
 import glob
+import optparse
 import subprocess
 from subprocess import Popen, PIPE, STDOUT
 import os
 from os.path import basename
+import sys
 
 standartPassedFilePath = "passedCheck.txt"
 
+# parses arguments
+#=====================================================================================================================
+parser = optparse.OptionParser()
+parser.add_option("-d" ,"--directory"       ,dest="directory"       ,action="store"     ,type="string",metavar="FILE"
+                                            ,help="directory that contains header files")
+
+parser.add_option("-s" ,"--silent"          ,dest="silent"          ,action="store_true"
+                                            ,help="removes all output")
+
+parser.add_option("-v" ,"--verbose"         ,dest="verbose"         ,action="store_true"
+                                            ,help="print extra information")
+
+parser.add_option("-f" ,"--showOnlyFailed"  ,dest="showOnlyFailed"  ,action="store_true"
+                                            ,help="passed files are no longer displayed")
+
+parser.add_option("-c" ,"--compiler"        ,dest="compiler"        ,action="store"     ,type='string'
+                                            ,help="not implemented yet")
+
+parser.add_option("-i" ,"--ignore"          ,dest="ignored"         ,action="store"     ,type='string'
+                                            ,help="file that contains the names of headers that should be ignored")
+
+parser.add_option(      "--CXX"             ,dest="CXX"             ,action="store"     ,type='string'
+                                            ,help="")
+
+parser.add_option(      "--CFLAGS"          ,dest="CFLAGS"          ,action="store"     ,type='string'
+                                            ,help="")
+
+
+options,args =  parser.parse_args()
+#=====================================================================================================================
+
+#colour class for coloured output
 class bcolors:
     HEADER = '\033[95m'
-    OKBLUE = '\033[94m'
-    OKGREEN = '\033[92m'
+    OKBLUE = '\033[94m'     # Used for checks from last iteration
+    OKGREEN = '\033[92m'    # Used for newly passed
     WARNING = '\033[93m'
-    FAIL = '\033[91m'
-    ENDC = '\033[0m'
+    FAIL = '\033[91m'       # Used for error
+    ENDC = '\033[0m'        # Used to reset colour
     BOLD = '\033[1m'
     UNDERLINE = '\033[4m'
 
-def loadIgnored():
-    ignoredFile = open(".checkIgnore")
-    ignored = [ x.strip('\t').strip('\n') for x in ignoredFile.readlines()]
-    ignoredFile.close()
+#loads and returns list of files that should be ignored when testing
+def loadIgnored(ignoredFileName=".checkIgnore"):
+    ignored = []
+    if os.path.isfile(ignoredFileName):
+        ignoredFile = open(ignoredFileName)
+        ignored = [ x.strip('\t').strip('\n') for x in ignoredFile.readlines()]
+        ignoredFile.close()
+
     return ignored
 
 #load files in src folder and remove ignored from list
-def createFileList(ignored=[],srcFolder="../"):
-    allFiles=glob.glob(srcFolder + "*.h")
+def createFileList(ignored,srcFolder):
+    allFiles=glob.glob(srcFolder + "/*.h")
     cleanedFiles = [x for x in allFiles if basename(x) not in ignored]
+    if len(cleanedFiles) == 0:
+        print(bcolors.FAIL + "Error: " + bcolors.ENDC + "no files found")
+        exit()
     return cleanedFiles
 
-def loadPassed(fileName=standartPassedFilePath):
-    passed = []
-    if os.path.isfile(fileName):
-        file = open(fileName, 'r')
-        passed = [ x.strip('\t').strip('\n') for x in file.readlines()]
-        file.close()
-    return passed
+def grouped(iterable, n):
+    return [zip(*[iter(iterable)]*n)]
 
+#saves file name of files that successfully compiled as txt
 def savePassed(passedFiles,filename=standartPassedFilePath):
     savefile = open("passedCheck.txt", 'w+')
     for passed in passedFiles:
         savefile.write(passed + "\n")
     savefile.close()
 
+#loads txt file in which previously passed files are saved
+def loadPassed(passedFileName=standartPassedFilePath):
+    passed = []
+    if os.path.isfile(passedFileName):
+        file = open(passedFileName, 'r')
+        passed = [ x.strip('\t').strip('\n') for x in file.readlines()]
+        file.close()
+
+    return passed
+
+#prints separator line if not silent
+def printSeparator():
+    if not options.silent:
+        print("-" * paddingEntire)
+
+#paddings for results
 paddingResult = 40
 paddingName = 40
 paddingEntire= paddingResult + paddingName
-def main():
+
+def run():
     passedFiles = loadPassed()
     failedFiles = []
-    showPassed = False
+    showOnlyFailed = options.showOnlyFailed
     allPassed = True
 
-    ignored=loadIgnored()
-    compilerCommand = "g++ -std=c++11 -DgFortran -DCDO "
+    if options.ignored:
+        ignored=loadIgnored(options.ignored)
+    else:
+        ignored=loadIgnored()
 
-    for file in createFileList(ignored) :
+    if options.verbose:
+        print("Checking headers in: "+ options.directory)
+
+    for file in createFileList(ignored, options.directory) :
         name = basename(file)
+        CXX="-std=c++11 -DgFortran -DCDO" 
+        compilerCommand = "g++  -o" + name + ".gch "+ CXX + " "
         logFileName = "hc_" +name + ".log"
-        log = open(logFileName,'wb+')
 
         if name not in passedFiles:
+            log = open(logFileName,'wb+')
             command = compilerCommand + file
             process = subprocess.Popen(command.split(), cwd=os.getcwd(),stdout=log,stderr=log)
             output, error = process.communicate()
+
             if (process.returncode != 0):
-                print((name + ": "   ).ljust(paddingName)
-                      + bcolors.FAIL + ("FAIL   " 
-                      + bcolors.ENDC + str(process.returncode)).ljust(paddingResult))
+                if not options.silent:
+                    print((name + ": "   ).ljust(paddingName)
+                          + bcolors.FAIL + ("FAIL   " 
+                          + bcolors.ENDC + str(process.returncode)).ljust(paddingResult))
                 failed =True
                 allPassed = False
                 failedFiles.append(name)
             else:
-                if showPassed:
-                    print((name + ": "   ).ljust(paddingName)
-                          + bcolors.OKGREEN + "OK".ljust(paddingResult) +
-                          bcolors.ENDC)
-                    removeCommand = "rm " + logFileName
-                    subprocess.Popen(removeCommand.split(), cwd=os.getcwd())
+                if not showOnlyFailed or options.verbose:
+                    if not options.silent:
+                        print((name + ": "   ).ljust(paddingName)
+                              + bcolors.OKGREEN + "OK".ljust(paddingResult) +
+                              bcolors.ENDC)
+
+                #delete log file if no error happend
+                removeCommand = "rm " + logFileName
+                subprocess.Popen(removeCommand.split(), cwd=os.getcwd())
 
                 passedFiles.append(name)
+                savePassed(passedFiles)
         else:
-            print((name + ": "   ).ljust(paddingName)
-                  + bcolors.OKBLUE + "OK from previous run".ljust(paddingResult) +
-                  bcolors.ENDC)
-            removeCommand = "rm " + logFileName
-            subprocess.Popen(removeCommand.split(), cwd=os.getcwd())
+            if not options.silent and not showOnlyFailed:
+                print((name + ": "   ).ljust(paddingName)
+                      + bcolors.OKBLUE + "OK from previous run".ljust(paddingResult) +
+                      bcolors.ENDC)
 
+        #reset failed marker for next iteration
         failed = False
 
-    print("-" * paddingEntire)
-    print(bcolors.WARNING + "Warning:"+ bcolors.ENDC + " ignored the following files specified in '.checkIgnore'" )
-    for file in ignored:
-        print(" ".ljust(6) + file)
-    if not allPassed:
+    printSeparator()
+
+    if len(ignored) > 0 and not options.silent:
+        print(bcolors.WARNING + "Warning:"+ bcolors.ENDC + " ignored the following files specified in '.checkIgnore'" )
+        for file in ignored:
+            print(" ".ljust(4) + file)
+
+    if not allPassed and not options.silent:
         print(bcolors.FAIL + "Failed:"+ bcolors.ENDC)
-        for file in failedFiles:
-            print(" ".ljust(6) + file)
+        preFormatFailedFiles = [failedFiles[i:i + 3] for i in range(0, len(failedFiles), 3)]
+        for row in preFormatFailedFiles:
+            outStr = "".ljust(4)
+            for fileName in row:
+                outStr += fileName.ljust(25)
+            print(outStr)
     else:
-        print(bcolors.OKGREEN + "SUCCESS" + bcolors.ENDC)
+        if not options.silent:
+            print(bcolors.OKGREEN + "SUCCESS" + bcolors.ENDC)
         removeCommand = "rm " + standartPassedFilePath
         subprocess.Popen(removeCommand.split(), cwd=os.getcwd())
 
-    print("-" * paddingEntire)
-
-
+    printSeparator()
     savePassed(passedFiles)
 
+    if not allPassed:
+        return -1
+    return 0
+
+
+def main():
+    return run()
+
 if __name__ == "__main__":
-    main()
+    instanceID = main()
+    sys.exit(instanceID)
