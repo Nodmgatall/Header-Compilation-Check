@@ -44,13 +44,13 @@ options,args =  parser.parse_args()
 
 #colour class for coloured output
 class bcolors:
-    HEADER = '\033[95m'
-    OKBLUE = '\033[94m'     # Used for checks from last iteration
-    OKGREEN = '\033[92m'    # Used for newly passed
-    WARNING = '\033[93m'
-    FAIL = '\033[91m'       # Used for error
-    ENDC = '\033[0m'        # Used to reset colour
-    BOLD = '\033[1m'
+    HEADER    = '\033[95m'
+    OKBLUE    = '\033[94m'      # Used for checks from last iteration
+    OKGREEN   = '\033[92m'      # Used for newly passed
+    WARNING   = '\033[93m'
+    FAIL      = '\033[91m'      # Used for error
+    ENDC      = '\033[0m'       # Used to reset colour
+    BOLD      = '\033[1m'
     UNDERLINE = '\033[4m'
 
 #loads and returns list of files that should be ignored when testing
@@ -119,7 +119,7 @@ def run():
     for file in createFileList(ignored, options.directory) :
         name = basename(file)
         CXX="-std=c++11 -DgFortran -DCDO" 
-        compilerCommand = "g++  -o" + name + ".gch "+ CXX + " "
+        compilerCommand = "g++  -o hc_"+ name + ".gch "+ CXX + " "
         logFileName = "hc_" +name + ".log"
 
         if name not in passedFiles:
@@ -129,6 +129,7 @@ def run():
             output, error = process.communicate()
 
             if (process.returncode != 0):
+                #show file failed
                 if not options.silent:
                     print((name + ": "   ).ljust(paddingName)
                           + bcolors.FAIL + ("FAIL   " 
@@ -137,6 +138,7 @@ def run():
                 allPassed = False
                 failedFiles.append(name)
             else:
+                #show file passed
                 if not showOnlyFailed or options.verbose:
                     if not options.silent:
                         print((name + ": "   ).ljust(paddingName)
@@ -150,6 +152,7 @@ def run():
                 passedFiles.append(name)
                 savePassed(passedFiles)
         else:
+            #show file already checked
             if not options.silent and not showOnlyFailed:
                 print((name + ": "   ).ljust(paddingName)
                       + bcolors.OKBLUE + "OK from previous run".ljust(paddingResult) +
@@ -189,7 +192,7 @@ def run():
 
 def main():
     if options.clean:
-        removeCommand = "rm " + "*.gch *.log"
+        removeCommand = "rm -f" + " hc_*.gch hc_*.log passedCheck.txt"
         subprocess.Popen(removeCommand, shell=True, cwd=(os.getcwd()+"/"))
         return 0
     else:
