@@ -65,13 +65,18 @@ def loadIgnored(ignoredFileName=".checkIgnore"):
 
 #load files in src folder and remove ignored from list
 def createFileList(ignored,srcFolder):
+    if srcFolder == None:
+        srcFolder = os.getcwd()
+
     allFiles=glob.glob(srcFolder + "/*.h")
     cleanedFiles = [x for x in allFiles if basename(x) not in ignored]
     if len(cleanedFiles) == 0:
-        print(bcolors.FAIL + "Error: " + bcolors.ENDC + "no files found")
-        exit()
+        print(bcolors.FAIL + "Error: " + bcolors.ENDC + "no files found in '" + srcFolder +"'")
+        sys.exit(-2)
+
     return cleanedFiles
 
+#util function for grouping output into rows
 def grouped(iterable, n):
     return [zip(*[iter(iterable)]*n)]
 
@@ -102,21 +107,30 @@ paddingResult = 40
 paddingName = 40
 paddingEntire= paddingResult + paddingName
 
+def evalOptions():
+    ignored = []
+    if options.ignored:
+        ignored=loadIgnored(options.ignored)
+
+    dir = None
+    if options.directory:
+        dir = options.directory
+
+    return ignored, dir
+
+
 def run():
     passedFiles = loadPassed()
     failedFiles = []
     showOnlyFailed = options.showOnlyFailed
     allPassed = True
 
-    if options.ignored:
-        ignored=loadIgnored(options.ignored)
-    else:
-        ignored=loadIgnored()
+    ignored, srcFolder = evalOptions()
 
     if options.verbose:
         print("Checking headers in: "+ options.directory)
 
-    for file in createFileList(ignored, options.directory) :
+    for file in createFileList(ignored, srcFolder) :
         name = basename(file)
         CXX="-std=c++11 -DgFortran -DCDO" 
         compilerCommand = "g++  -o hc_"+ name + ".gch "+ CXX + " "
