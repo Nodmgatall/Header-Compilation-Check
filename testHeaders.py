@@ -38,6 +38,9 @@ parser.add_option(      "--CFLAGS"          ,dest="CFLAGS"          ,action="sto
 parser.add_option(      "--clean"           ,dest="clean"           ,action="store_true"
                                             ,help="removes all files with hc_*.h.gch and hc_*.h.log and passedCheck.txt")
 
+parser.add_option("-r" ,"--recursive"      ,dest="recursive"       ,action="store_true"
+                                            ,help="goes through sub folders recursively")
+
 options,args =  parser.parse_args()
 #=====================================================================================================================
 
@@ -67,7 +70,8 @@ def createFileList(ignored,srcFolder):
     if srcFolder == None:
         srcFolder = os.getcwd()
 
-    allFiles=glob.glob(srcFolder + "/*.h")
+    regex = "/*.h" if not options.recursive else "/**/*.h" 
+    allFiles=glob.glob(srcFolder + regex, recursive = True if options.recursive else False)
     cleanedFiles = [x for x in allFiles if basename(x) not in ignored]
     if len(cleanedFiles) == 0:
         print(bcolors.FAIL + "Error: " + bcolors.ENDC + "no files found in '" + srcFolder +"'")
@@ -180,6 +184,9 @@ def run():
 
                 passedFiles.append(name)
                 savePassed(passedFiles)
+
+            removeCommand = "rm -rf hc_*.gch"
+            subprocess.Popen(removeCommand, cwd=os.getcwd(), shell=True)
         else:
             #show file already checked
             if not options.silent and not showOnlyFailed:
@@ -189,6 +196,7 @@ def run():
 
         #reset failed marker for next iteration
         failed = False
+
 
     printSeparator()
 
@@ -221,7 +229,7 @@ def run():
 
 def main():
     if options.clean:
-        removeCommand = "rm -f" + " hc_*.gch hc_*.log passedCheck.txt"
+        removeCommand = "rm -f" + " hc_*.log passedCheck.txt"
         subprocess.Popen(removeCommand, shell=True, cwd=(os.getcwd()+"/"))
         return 0
     else:
