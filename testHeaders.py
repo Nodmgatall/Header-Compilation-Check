@@ -116,24 +116,40 @@ def evalOptions():
     if options.directory:
         dir = options.directory
 
-    return ignored, dir
+    CXX="g++"
+    if options.CXX:
+        CXX = options.CXX
+
+    CFLAGS="-std=c++11 -DgFortran -DCDO" 
+    if options.CFLAGS:
+        CFLAGS = options.CFLAGS
+
+    return ignored, dir, CXX, CFLAGS
 
 
 def run():
+    if options.verbose and options.silent:
+        print(bcolors.FAIL + "Error:"  + bcolors.ENDC + " Verbose and silent options can not be used together")
+        sys.exit(-1)
+
     passedFiles = loadPassed()
     failedFiles = []
     showOnlyFailed = options.showOnlyFailed
     allPassed = True
 
-    ignored, srcFolder = evalOptions()
+    ignored, srcFolder, CXX, CFLAGS = evalOptions()
 
     if options.verbose:
         print("Checking headers in: "+ options.directory)
 
+    cmd =  CXX + " " + CFLAGS 
+    if options.verbose:
+        print(cmd)
+
+
     for file in createFileList(ignored, srcFolder) :
         name = basename(file)
-        CXX="-std=c++11 -DgFortran -DCDO" 
-        compilerCommand = "g++  -o hc_"+ name + ".gch "+ CXX + " "
+        compilerCommand = cmd + " -o hc_"+ name + ".gch "
         logFileName = "hc_" +name + ".log"
 
         if name not in passedFiles:
