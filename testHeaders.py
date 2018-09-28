@@ -11,7 +11,7 @@ standartPassedFilePath = "passedCheck.txt"
 # parses arguments
 #=====================================================================================================================
 parser = optparse.OptionParser()
-parser.add_option("-d" ,"--directory"       ,dest="directory"       ,action="store"     ,type="string",metavar="FILE"
+parser.add_option("-d" ,"--directory"       ,dest="directory"       ,action="store"     ,type="string",metavar="DIRECTORY"
                                             ,help="directory that contains header files")
 
 parser.add_option("-s" ,"--silent"          ,dest="silent"          ,action="store_true"
@@ -35,9 +35,8 @@ parser.add_option(      "--CXX"             ,dest="CXX"             ,action="sto
 parser.add_option(      "--CFLAGS"          ,dest="CFLAGS"          ,action="store"     ,type='string'
                                             ,help="")
 
-parser.add_option(      "--clean"          ,dest="clean"           ,action="store_true"
-                                            ,help="")
-
+parser.add_option(      "--clean"           ,dest="clean"           ,action="store_true"
+                                            ,help="removes all files with hc_*.h.gch and hc_*.h.log and passedCheck.txt")
 
 options,args =  parser.parse_args()
 #=====================================================================================================================
@@ -120,7 +119,7 @@ def evalOptions():
     if options.CXX:
         CXX = options.CXX
 
-    CFLAGS="-std=c++11 -DgFortran -DCDO" 
+    CFLAGS="" 
     if options.CFLAGS:
         CFLAGS = options.CFLAGS
 
